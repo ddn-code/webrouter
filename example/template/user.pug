@@ -1,0 +1,28 @@
+.col-md-8.offset-md-2
+  form(method='post')
+    h4 User data
+    .row
+        label.col-4(for='username') Username
+        .col
+            input#username.form-control(type='text' readonly='' name='username' value='the username')
+    .row
+        label.col-4(for='name') Name
+        .col
+            input#name.form-control(type='text' name='name')
+    .row
+        label.col-4(for='email') Email
+        .col
+            input#email.form-control(type='email' name='email')
+    .row.mt-3
+        .col.text-center
+            button.btn.btn-primary(name="update" type='submit') Save
+    h4.mt-4 Change password
+    .row
+        label.col-4(for='password') Password
+        .col
+            input#password.form-control(type='password' validate-match='passwordm' name='password')
+            small.text-muted repeat password
+            input#passwordm.form-control(type='password' name='passwordm')
+    .row.mt-3
+        .col.text-center
+            button.btn.btn-primary(type='submit' name='update' value='password') Change

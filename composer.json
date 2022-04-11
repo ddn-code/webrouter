@@ -1,0 +1,21 @@
+{
+    "name": "ddn/router",
+    "description": "Routing for Web applications",
+    "type": "library",
+    "license": "Apache 2.0",
+    "authors": [
+        {
+            "name": "Carlos A.",
+            "email": "caralla@upv.es"
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "pug-php/pug": ">=3.5.0",
+        "phug/phug": ">=1.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "ddn\\api\\": "src/"}
+    }
+}
