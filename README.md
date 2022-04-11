@@ -5,6 +5,10 @@ A library to ease the development of PHP web applications.
 
 TBD
 
+```
+composer require ddn/router dev-main
+```
+
 ## Doc
 
 ### Base web application

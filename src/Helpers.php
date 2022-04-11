@@ -1,5 +1,5 @@
 <?php
-namespace ddn\api\Helpers;
+namespace ddn\api\router\Helpers;
 // use Pug\Pug;
 use Phug;
 

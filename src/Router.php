@@ -1,9 +1,8 @@
 <?php
-namespace ddn\api;
-use ddn\api\Helpers\ProxyList;
-use function ddn\api\Helpers\p_debug as p_debug;
-use function ddn\api\Helpers\pugrender;
-use function ddn\api\Helpers\pre_var_dump as pre_var_dump;
+namespace ddn\api\router;
+use function ddn\api\router\Helpers\p_debug;
+use function ddn\api\router\Helpers\pugrender;
+use function ddn\api\router\Helpers\pre_var_dump;
 
 require_once('Helpers.php');
 

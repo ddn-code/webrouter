@@ -1,7 +1,5 @@
 <?php
-
-namespace ddn\api\Router;
-use function ddn\api\pre_var_dump;
+namespace ddn\api\router;
 
 if (!defined('__WILDCARD_SUBOP'))
     define('__WILDCARD_SUBOP', "##__ANY_VALUE_FOUND__##");

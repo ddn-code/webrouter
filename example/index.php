@@ -1,24 +1,24 @@
 <?php
-use ddn\api\Router;
-use ddn\api\Renderer;
-use ddn\api\Router\Op;
+use ddn\api\router\Router;
+use ddn\api\router\Renderer;
+use ddn\api\router\Op;
 
 require_once('vendor/autoload.php');
 
 // First create the router for our application; it is a simple router thet we must manage
-$router = new ddn\api\Router("_OPERATION");
+$router = new ddn\api\router\Router("_OPERATION");
 
 if (defined('__CUSTOM_ROUTES') && (is_callable(__CUSTOM_ROUTES)))
     call_user_func_array(__CUSTOM_ROUTES, [ $router ]);
 
-class SayHello extends ddn\api\Router\Op {
+class SayHello extends ddn\api\router\Op {
 
     function _default_op() {
         echo "executed the default op";
     }
 }
 
-class OpUser extends ddn\api\Router\Op {
+class OpUser extends ddn\api\router\Op {
     const _FUNCTIONS = [
         "login" => "_login",
         "logout" => "_logout",
