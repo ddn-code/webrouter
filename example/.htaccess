@@ -1,0 +1,19 @@
+RewriteEngine On
+RewriteBase /example
+RewriteRule ^/index\.php$ - [L]
+RewriteRule ^/favicon\.ico$ - [L]
+
+# If it is a php file, but it is not index.php, pass it as _OPERATION parameter
+#   (this way we won't enable to run arbitrary code)
+RewriteCond %{REQUEST_URI} ^(.*)\.php$
+RewriteCond %{REQUEST_FILENAME} !index.php$
+RewriteRule ^(.*)$ index.php?_OPERATION=$1 [L,QSA]
+
+# If it is other file that exists, serve it
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^(.*)$ - [L,QSA]
+
+# Finally, if the file does not exist nor is a folder, pass it as _OPERATION parameter
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?_OPERATION=$1 [L,QSA]

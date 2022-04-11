@@ -1,6 +1,4 @@
 <?php
-define("DEBUG", true);
-
 use ddn\api\Router;
 use ddn\api\Renderer;
 use ddn\api\Router\Op;
