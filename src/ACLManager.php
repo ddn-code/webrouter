@@ -1,7 +1,6 @@
 <?php
 
 namespace ddn\api\router;
-use function ddn\api\router\Helpers\pre_var_dump;
 
 interface ACLUser {
     /**

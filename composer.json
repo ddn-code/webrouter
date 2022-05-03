@@ -12,10 +12,11 @@
     "require": {
         "php": ">=7.4",
         "pug-php/pug": ">=3.5.0",
-        "phug/phug": ">=1.9"
+        "phug/phug": ">=1.9",
+        "ddn/common": ""
     },
     "autoload": {
         "psr-4": {
-            "ddn\\api\\": "src/"}
+            "ddn\\api\\router\\": "src/"}
     }
 }

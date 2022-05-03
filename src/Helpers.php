@@ -3,22 +3,6 @@ namespace ddn\api\router\Helpers;
 // use Pug\Pug;
 use Phug;
 
-function p_debug($msg, ...$args) {
-    if (defined('DEBUG') && DEBUG) {
-        echo "<pre class=\"debug\">";
-        echo sprintf($msg, ...$args);
-        echo "</pre>";
-    }
-}
-
-function pre_var_dump(...$vars) {
-    echo "<pre class=\"debug\">";
-    foreach ($vars as $var) {
-        var_dump($var);
-    }
-    echo "</pre>";
-}
-
 function pugrender($fname, $variables = []) {
     /*
     $pug = new Pug([

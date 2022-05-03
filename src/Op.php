@@ -4,12 +4,60 @@ namespace ddn\api\router;
 if (!defined('__WILDCARD_SUBOP'))
     define('__WILDCARD_SUBOP', "##__ANY_VALUE_FOUND__##");
 
+class OpMessage {
+    const ERROR = "error";
+    const WARNING = "warning";
+    const SUCCESS = "success";
+    const INFO = "info";
+    const DEBUG = "debug";
+
+    public $message = null;
+    public $type = null;
+    public $data = null;
+
+    public function __construct($message, $type, $data = null) {
+        $this->message = $message;
+        switch ($type) {
+            case self::ERROR:
+            case self::WARNING:
+            case self::SUCCESS:
+            case self::INFO:
+            case self::DEBUG:
+                $this->type = $type;
+            default:
+                $this->type = "info";
+                break;
+        }
+        $this->type = $type;
+        $this->data = $data;
+    }
+
+    public function __toString() {
+        return "<div class=\"{$this->type}\">{$this->message}</div>";
+    }
+}
+
 class Op {
     /**
      * The name of the operation (not really required; just for information)
      */
     const _NAME = null;
     protected $messages = [];
+
+    /**
+     * The result of the operation (null should mean that it has not been executed)
+     */
+    protected $result = null;
+    /**
+     * This is a function to set the result, and it is in the form of setter and getter for future enhancements
+     * @param $r the result to set
+     */
+    protected function set_result($r) {
+        $this->result = $r;
+    }
+    public function get_result() {
+        return $this->result;
+    }
 
     /**
      * Parameters for the operation, as an associative array
@@ -101,13 +149,15 @@ class Op {
      * Executes the operation
      * @return object false if no operation has been executed; an arbitrary value otherwise
      */
-    public function do() {
+    public function do($values = null) {
         // Do nothing
+        $this->result = null;
         if (! $this->_auth()) {
             $this->forbidden();
             return false;
         }
-        return $this->_do();
+        $this->_do($values);
+        return $this->result;
     }
 
     /**
@@ -160,23 +210,85 @@ class Op {
     /** Function that carries out with the operation
      * @return result false in case that the operation failed; any other object if the operation suceeded
      */
-    protected function _do() {
-        if ($this->_pre_do() !== true) return false;
+    protected function _do($values = null) {
+        if ($this->_pre_do($values) !== true) return false;
 
-        return $this->_do_ops();
+        return $this->_do_ops($values);
     }
 
-    protected function _pre_do() {
+    protected function _pre_do($values = null) {
         return true;
     }
-
-    protected function add_message($message, $retval = false) {
-        $this->messages[] = $message;
+    /**
+     * Obtains the number of error messages in the operation
+     * @return the number of messages of type "error"
+     */
+    public function error_count() {
+        return count(array_filter($this->messages, function($m) { return $m->type === OpMessage::ERROR; }));
+    }
+    /**
+     * Retrieves the error messages in the operation
+     * @return an array of OpMessage objects of type "error"
+     */
+    public function get_error_messages() {
+        return array_filter($this->messages, function($m) { return $m->type === OpMessage::ERROR; });
+    }
+    /**
+     * These are shortcuts to add a message and return the operation
+     * 
+     * The default value for the return is "true", because if the operation added a message, it is assumed to have been executed.
+     *   When allowing multiple operations for one operation, if one of them returns "true", it means that more operations may
+     *   be executed, but once one of them returns "false", the operation chain is considered to have failed.
+     * 
+     * The idea is to avoid multiple statements in the operation, like the next on
+     *      if (error) {
+     *          $this->add_message("this is an error");
+     *          $this->set_result(false);
+     *          return false;
+     *      }
+     *      if (othererror) {
+     *          $this->add_message("this is other error");
+     *          $this->set_result(false);
+     *          return false;
+     *      }
+     *      $this->add_message("this is correct");
+     *      $this->set_result(true);
+     *      return false;
+     * 
+     * And convert it into
+     *      if (error) return $this->add_message("this is an error");
+     *      if (othererror) return $this->add_message("this is other error");
+     *      return $this->add_message("this is correct");
+     * 
+     * @param message the message to add
+     * @param $result the result of the operation
+     * @param $retval the return value of the operation (defaults to false, to stop the operation chain)
+     * @return $retval
+     */
+    protected function _add_message($message, $type, $result = true, $retval = false) {
+        $this->messages[] = new OpMessage($message, $type, $result);
+        $this->set_result($result);
         return $retval;
     }
-
+    protected function add_error($message, $result = false, $retval = false) {
+        return $this->_add_message($message, OpMessage::ERROR, $result, $retval);
+    }
+    protected function add_warning($message, $result = true, $retval = false) {
+        return $this->_add_message($message, OpMessage::WARNING, $result, $retval);
+    }
+    protected function add_info($message, $result = true, $retval = false) {
+        return $this->_add_message($message, OpMessage::INFO, $result, $retval);
+    }
+    protected function add_success($message, $result = true, $retval = false) {
+        return $this->_add_message($message, OpMessage::SUCCESS, $result, $retval);
+    }
+    
     protected function clear_messages() {
         $this->messages = [];
+    }
+
+    public function get_messages() {
+        return $this->messages;
     }
 
     // Array of internal ops, that will be executed depending on the values of POSTS

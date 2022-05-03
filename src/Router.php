@@ -1,10 +1,9 @@
 <?php
 namespace ddn\api\router;
-use function ddn\api\router\Helpers\p_debug;
 use function ddn\api\router\Helpers\pugrender;
-use function ddn\api\router\Helpers\pre_var_dump;
+use ddn\api\Helpers;
 
-require_once('Helpers.php');
+require_once("Helpers.php");
 
 define('APP2REST_VAR_PATTERN', "/^<(?<optional>\?|)(?<name>[a-zA-Z_][a-zA-Z_0-9]*)(?:\s*=\s*(?<default>(?:'[^']*'|\"(?:[^\"\\\]|\\\.)*\"|[^'\"][^>]*))|)>$/");
 define('APP2REST_VAR_QUERY_SUBST', "/<(?<name>(?:#|)[a-zA-Z][a-zA-Z0-9_]*)(?:\s*=\s*(?<default>(?:'[^']*'|\"(?:[^\"\\\]|\\\.)*\"|[^'\"][^>]*))|)\s*>/");
@@ -52,18 +51,23 @@ class Renderer {
         $this->route = $route;
         $this->handler = $handler;
     }
+
     public function view() {
         if ($this->route->view !== null) {
-            if (substr($this->route->view, -4) === '.pug') {
-                // Render the view using the pug runtime and make handler available to the view, as a variable
-                pugrender($this->route->view, [
-                    "_OP_HANDLER" => $this->handler
-                ]);
+            if (is_callable($this->route->view)) {
+                call_user_func_array($this->route->view, [ $this->handler ] );
             } else {
-                // Make handler avaliable in the view
-                global $_OP_HANDLER;
-                $_OP_HANDLER = $this->handler;
-                require_once($this->route->view);
+                if (substr($this->route->view, -4) === '.pug') {
+                    // Render the view using the pug runtime and make handler available to the view, as a variable
+                    pugrender($this->route->view, [
+                        "_OP_HANDLER" => $this->handler
+                    ]);
+                } else {
+                    // Make handler avaliable in the view
+                    global $_OP_HANDLER;
+                    $_OP_HANDLER = $this->handler;
+                    require_once($this->route->view);
+                }
             }
             return true;
         } else {
@@ -91,12 +95,12 @@ class Renderer {
         $renderer = Renderer::get_renderer($this->route->renderer);
         if ($view !== null) {
             if (is_callable($renderer)) {
-                $result = call_user_func_array($renderer, [ $view, $this ] );
+                $result = call_user_func_array($renderer, [ $view, $this->handler ] );
                 if ($result === false) 
                     return false;
             } else {
                 // Make the view available for the renderer
-
+                /*
                 if (substr($renderer, -4) === '.pug') {
                     // Render the view using the pug runtime and make handler available to the view, as a variable
                     pugrender($renderer, [
@@ -111,6 +115,7 @@ class Renderer {
                     $_OP_HANDLER = $this->handler;
                     require_once($renderer);
                 }
+                */
             }
         }
         return true;
@@ -218,7 +223,6 @@ class RouteDefinition {
      * @return true if the URL matches the URL in which the function listens
      */
     public function check_url($incomingurl) {
-        p_debug("testing function for url: $incomingurl");
         return preg_match($this->re_expression, $incomingurl);
     }
 
@@ -229,7 +233,7 @@ class RouteDefinition {
      * @return a new handler that has the parameters set or false if the incoming URL does not match the route
      */
     public function get_handler($incomingurl) {
-        p_debug("executing function for url: $incomingurl");
+        Helpers::p_debug("executing function for url: $incomingurl");
 
         // Now check wether the url matches the function's url and capture the parameters
         $match = preg_match($this->re_expression, $incomingurl, $matches);
@@ -303,7 +307,7 @@ class RouteDefinition {
                     }
                 }
             }
-            //p_debug($varname, $value, $values, $defaults, $match["default"]??null);
+            //Helpers::p_debug($varname, $value, $values, $defaults, $match["default"]??null);
             return "" . $value;
         }, $txt_original);                  
     }
@@ -337,7 +341,7 @@ class Router {
      * - onsuccess, onerror
      * - post-callback
      */
-    public function __construct($path_varname) {
+    public function __construct($path_varname, $folder = "") {
         /** The name of the variable in the "_GET" array from which to get the path */
         $this->_path_varname = $path_varname;
         $this->_routes = [];
@@ -349,13 +353,67 @@ class Router {
             "preview" => false,
             "postview" => false,
         ];
+        $this->_folder = $folder;
+    }
+
+    public function set_folder($folder) {
+        $this->_folder = $folder;
     }
 
     public function add($url, $classname, $template, $renderer = null) {
+        if (!is_callable($template)) {
+            if (! file_exists($template)) {
+                $template = $this->_folder . "/" . $template;
+            }
+            if (! file_exists($template)) {
+                throw new \Exception("Template file '$template' not found");
+            }
+            $template = function($handler) use ($template) {
+                if (substr($template, -4) === '.pug') {
+                    // Render the view using the pug runtime and make handler available to the view, as a variable
+                    pugrender($template, [
+                        "_OP_HANDLER" => $handler
+                    ]);
+                } else {
+                    // Make handler avaliable in the view
+                    global $_OP_HANDLER;
+                    $_OP_HANDLER = $handler;
+                    require_once($template);
+                }
+                return true;
+            };
+        }
+
+        $renderer = Renderer::get_renderer($renderer);
+        if (!is_callable($renderer)) {
+            if (! file_exists($renderer)) {
+                $renderer = $this->_folder . "/" . $renderer;
+            }
+            if (! file_exists($renderer)) {
+                throw new \Exception("Renderer file '$renderer' not found");
+            }
+            $renderer = function($view, $handler) use ($renderer) {
+                if (substr($renderer, -4) === '.pug') {
+                    // Render the view using the pug runtime and make handler available to the view, as a variable
+                    pugrender($renderer, [
+                        "_VIEW" => $view,
+                        "_OP_HANDLER" => $handler
+                    ]);
+                } else {
+                    // Make handler avaliable in the view
+                    global $_OP_HANDLER;
+                    global $_VIEW;
+                    $_VIEW = $view;
+                    $_OP_HANDLER = $handler;
+                    require_once($renderer);
+                }    
+                return true;
+            };
+        }
         $this->_routes[] = new RouteDefinition($url, $classname, $template, $renderer);
     }
 
-    public function exec() {
+    public function exec($values = null) {
         $route = $route ?? ($_GET[$this->_path_varname] ?? null);
         foreach ($this->_routes as $function) {
             if ($function->check_url($route)) {
@@ -368,7 +426,7 @@ class Router {
 
                 $handler = $function->get_handler($route);
                 if ($handler !== false) {
-                    $result = $handler->do();
+                    $result = $handler->do($values);
 
                     if (($result !== false) && (is_callable($this->_callbacks["onsuccess"]))) {
                         $this->_callbacks["onsuccess"]($route, $function, $handler, $result);
