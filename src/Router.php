@@ -2,6 +2,7 @@
 namespace ddn\api\router;
 use function ddn\api\router\Helpers\pugrender;
 use ddn\api\Helpers;
+use ddn\api\Debug;
 
 require_once("Helpers.php");
 
@@ -233,7 +234,7 @@ class RouteDefinition {
      * @return a new handler that has the parameters set or false if the incoming URL does not match the route
      */
     public function get_handler($incomingurl) {
-        Helpers::p_debug("executing function for url: $incomingurl");
+        Debug::p_debug("executing function for url: $incomingurl");
 
         // Now check wether the url matches the function's url and capture the parameters
         $match = preg_match($this->re_expression, $incomingurl, $matches);
@@ -307,7 +308,7 @@ class RouteDefinition {
                     }
                 }
             }
-            //Helpers::p_debug($varname, $value, $values, $defaults, $match["default"]??null);
+            //Debug::p_debug($varname, $value, $values, $defaults, $match["default"]??null);
             return "" . $value;
         }, $txt_original);                  
     }

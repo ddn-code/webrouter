@@ -1,6 +1,8 @@
 <?php
 namespace ddn\api\router\Helpers;
 // use Pug\Pug;
+use ddn\api\Debug;
+
 use Phug;
 
 function pugrender($fname, $variables = []) {
@@ -11,6 +13,18 @@ function pugrender($fname, $variables = []) {
     $pug->displayFile($fname, $variables);            
     */
     Phug::displayFile($fname,
+        $variables,
+    );
+}
+
+function pugrender_s($fname, $variables = []) {
+    /*
+    $pug = new Pug([
+        // here you can set options
+    ]);
+    $pug->displayFile($fname, $variables);            
+    */
+    return Phug::renderFile($fname,
         $variables,
     );
 }
@@ -30,7 +44,7 @@ class ProxyList {
             if (method_exists($proxy, $method_name)) {
                 return call_user_func_array([$proxy, $method_name], $args);
             } else {
-                p_debug("method $method_name not found in proxy $proxy");
+                Debug::p_debug("method $method_name not found in proxy $proxy");
             }
         }
     }
