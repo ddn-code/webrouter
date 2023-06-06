@@ -32,13 +32,17 @@ function clean_and_split_url($url) {
 class Renderer {
     protected static $default_renderer = null;
 
+    // Backreferences to the route and the handler to be available in the renderer
+    protected $route = null;
+    protected $handler = null;
+
     public static function set_default($renderer) {
         self::$default_renderer = $renderer;
     }
 
     public static function get_renderer($renderer) {
         if (is_null(self::$default_renderer)) {
-            Rendered::$default_renderer = function ($view) { echo($view); };
+            Renderer::$default_renderer = function ($view) { echo($view); };
         }
         if (is_null($renderer)) {
             return self::$default_renderer;
@@ -137,13 +141,19 @@ class RouteDefinition {
      */
     protected $config = [];
 
-    public $view = null;
+    // The classname that handles the operation
+    protected $classname = null;
+    // The view to use as a result in the renderer
+    public $view;
     public $renderer = null;
 
+    // The default value for the parameters in the URL
+    protected $param_default_value = [];
     /**
      * @param url url pattern in which the function may be triggered (URL pattern:    /path/to/<parameter>/or/<other_parameter/<?optional_parameter=default>
      * @param classname the class to instantiate, to handle the operation (will be instantiated and called the method 'do')
      * @param view the view to use as a result in the renderer
+     * @param renderer
      */
     public function __construct($url, $classname, $view = null, $renderer = null) {
 
@@ -203,9 +213,9 @@ class RouteDefinition {
                 }
 
                 // Prepare the regular expression for the parameter
-                $re_expression = "\/(?<${param}>[^\/]+)";
+                $re_expression = "\/(?<{$param}>[^\/]+)";
                 if ($optional === true) {
-                    $re_expression = "(${re_expression}|)";
+                    $re_expression = "({$re_expression}|)";
                 }
             } else {
                 $re_expression = "\/$part";
@@ -224,6 +234,7 @@ class RouteDefinition {
      * @return true if the URL matches the URL in which the function listens
      */
     public function check_url($incomingurl) {
+        $incomingurl = $incomingurl??"";
         return preg_match($this->re_expression, $incomingurl);
     }
 
@@ -237,7 +248,7 @@ class RouteDefinition {
         Debug::p_debug("executing function for url: $incomingurl");
 
         // Now check wether the url matches the function's url and capture the parameters
-        $match = preg_match($this->re_expression, $incomingurl, $matches);
+        $match = preg_match($this->re_expression, $incomingurl??"", $matches);
 
         // If not matches, return false
         if ($match !== 1) {
@@ -260,7 +271,7 @@ class RouteDefinition {
             }
         }
 
-        return new $this->classname($param_values);
+        return new $this->classname($incomingurl, $param_values);
     }    
 
     /** This is inherited from other project; has no sense here (at this time) 
@@ -335,6 +346,10 @@ class RouteDefinition {
 }
 
 class Router {
+    var $_routes = [];
+    var $_path_varname = null;
+    var $_callbacks = [];
+    var $_folder = null;
     /**
      * Order of callbacks:
      * - pre-callback
@@ -361,8 +376,8 @@ class Router {
         $this->_folder = $folder;
     }
 
-    public function add($url, $classname, $template, $renderer = null) {
-        if (!is_callable($template)) {
+    public function add($url, $classname, $template = null, $renderer = null) {
+        if (($template !== null) && !is_callable($template)) {
             if (! file_exists($template)) {
                 $template = $this->_folder . "/" . $template;
             }
@@ -415,7 +430,7 @@ class Router {
     }
 
     public function exec($values = null) {
-        $route = $route ?? ($_GET[$this->_path_varname] ?? null);
+        $route = $_GET[$this->_path_varname] ?? null;
         foreach ($this->_routes as $function) {
             if ($function->check_url($route)) {
                 if (is_callable($this->_callbacks["precallback"])) {

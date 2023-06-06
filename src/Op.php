@@ -63,6 +63,7 @@ class Op {
      * Parameters for the operation, as an associative array
      */
     public $_PARAMETERS = [];
+    
     /**
      * Basic definition of functions for this operation. The syntax is an array of
      *  "variable" => "function name" or "variable" => [ "function value" => "function name", ... ]
@@ -101,6 +102,25 @@ class Op {
     const _PERMS=[];
 
     /**
+     *  (* reminder) operations can be registered; the operations means that if a variable coming from 
+     *      the client is set to a value (or any), a function will be executed instead of the default 
+     *      operation. 
+     * 
+     * When executing an operation, where to get the values to check the operations. The possibilities
+     *   are:
+     *      "GET"
+     *      "POST"
+     *      "GET+POST" (if a variable is set both in GET and POST, the value in GET has priority)
+     *      "POST+GET" (if a variable is set both in GET and POST, the value in POST has priority)
+     */
+    const _DEFAULT_VALUES_FOR_OPS="POST";
+
+    /**
+     * The route for which the op was instantiated
+     */
+    protected $__route = null;
+
+    /**
      * Static function to get the user that is being using the application (e.g. the logged in user)
      *   (*) If there is a global function get_app_user, it will be called
      */
@@ -116,21 +136,176 @@ class Op {
      * Static function that notifies the operation that the user has forbidden access to it
      *   (*) the default implementation calls the global function redirect_to_forbidden if it exists
      */
-    static function _forbidden() {
+    static function _forbidden($die = true) {
         if (function_exists("redirect_to_forbidden")) {
             redirect_to_forbidden();
         } else {
-            header("HTTP/1.0 403 Forbidden");
-            echo "Forbidden";
+            self::_html_error(403, $die);
+        }
+    }
+
+    /**
+     * Generates a header for an error code and sends it to the client; if [die] is set to true, the app will exit
+     * @param [code] the error code
+     * @param [die] whether to die or not after sending the header
+     */
+    static function _html_error($code, $die = true) {
+        $text = self::_html_eror_to_text($code);
+        $protocol = (isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.0');
+        header($protocol . ' ' . $code . ' ' . $text);
+        if ($die) {
+            echo $text;
             exit;
         }
     }
 
     /**
+     * Obtains the text that corresponds to a HTML error code
+     */
+    static function _html_eror_to_text($code) {
+        switch ($code) {
+            case 100: $text = 'Continue'; break;
+            case 101: $text = 'Switching Protocols'; break;
+            case 200: $text = 'OK'; break;
+            case 201: $text = 'Created'; break;
+            case 202: $text = 'Accepted'; break;
+            case 203: $text = 'Non-Authoritative Information'; break;
+            case 204: $text = 'No Content'; break;
+            case 205: $text = 'Reset Content'; break;
+            case 206: $text = 'Partial Content'; break;
+            case 300: $text = 'Multiple Choices'; break;
+            case 301: $text = 'Moved Permanently'; break;
+            case 302: $text = 'Moved Temporarily'; break;
+            case 303: $text = 'See Other'; break;
+            case 304: $text = 'Not Modified'; break;
+            case 305: $text = 'Use Proxy'; break;
+            case 400: $text = 'Bad Request'; break;
+            case 401: $text = 'Unauthorized'; break;
+            case 402: $text = 'Payment Required'; break;
+            case 403: $text = 'Forbidden'; break;
+            case 404: $text = 'Not Found'; break;
+            case 405: $text = 'Method Not Allowed'; break;
+            case 406: $text = 'Not Acceptable'; break;
+            case 407: $text = 'Proxy Authentication Required'; break;
+            case 408: $text = 'Request Time-out'; break;
+            case 409: $text = 'Conflict'; break;
+            case 410: $text = 'Gone'; break;
+            case 411: $text = 'Length Required'; break;
+            case 412: $text = 'Precondition Failed'; break;
+            case 413: $text = 'Request Entity Too Large'; break;
+            case 414: $text = 'Request-URI Too Large'; break;
+            case 415: $text = 'Unsupported Media Type'; break;
+            case 500: $text = 'Internal Server Error'; break;
+            case 501: $text = 'Not Implemented'; break;
+            case 502: $text = 'Bad Gateway'; break;
+            case 503: $text = 'Service Unavailable'; break;
+            case 504: $text = 'Gateway Time-out'; break;
+            case 505: $text = 'HTTP Version not supported'; break;
+            default:
+                exit('Unknown http status code "' . htmlentities($code) . '"');
+            break;
+        }
+        return $text;
+    }
+
+    /**
+     * Static function that notifies the operation that the function execution suceeded
+     *   (*) the default implementation calls the global function redirect_to_succees if it exists
+     */
+    static function _success($die = true) {
+        if (function_exists("redirect_to_succes")) {
+            redirect_to_succes();
+        } else {
+            self::_html_error(200, $die);
+        }
+    }
+
+    /**
+     * Static function that notifies the operation that a resource is not found
+     *   (*) the default implementation calls the global function redirect_to_notfound if it exists
+     */
+    static function _notfound($die = true) {
+        if (function_exists("redirect_to_notfound")) {
+            redirect_to_notfound();
+        } else {
+            self::_html_error(404, $die);
+        }
+    }
+
+    /**
+     * Static function that notifies the operation that a user is not authorized to access to a resource
+     *   (*) the default implementation calls the global function redirect_to_unauthorized if it exists
+     */
+    static function _unauthorized($die = true) {
+        if (function_exists("redirect_to_unauthorized")) {
+            redirect_to_notfound();
+        } else {
+            self::_html_error(401, $die);
+        }
+    }
+
+    /**
+     * Static function that notifies the operation that a user is not authorized to access to a resource
+     *   (*) the default implementation calls the global function redirect_to_unauthorized if it exists
+     */
+    static function _internalerror($die = true) {
+        if (function_exists("redirect_to_internalerror")) {
+            redirect_to_notfound();
+        } else {
+            self::_html_error(500, $die);
+        }
+    }
+
+    /**
+     * Static function that notifies the operation that the request made by the client is incomplete or bad received
+     *   (*) the default implementation calls the global function redirect_to_badrequest if it exists
+     */
+    static function _badrequest($die = true) {
+        if (function_exists("redirect_to_badrequest")) {
+            redirect_to_notfound();
+        } else {
+            self::_html_error(400, $die);
+        }
+    }
+
+    /**
+     * Static function that sets the content type to json and dumps an object using json_encode function
+     */
+    static function _dump_json($obj, $die = true) {
+        header("Content-type: application/json");
+        print(json_encode($obj));
+        if ($die) {
+            exit;
+        }
+    }
+
+    /**
+     * Static function that retrieves the input of the query as an object, decoded using json_decode function
+     *   (if the object is not json, it will return "null")
+     */
+    static function _read_json($die = true) {
+        if (stripos( $_SERVER["CONTENT_TYPE"] , "application/json" ) !== 0) {
+            self::_html_error(415, $die);
+            return null;
+        }
+        $body = file_get_contents("php://input");
+        return json_decode($body, true);
+    }
+
+    /**
+     * Obtains the route for which the Op was instantiated
+     */
+    public function get_route() {
+        return $this->__route;
+    }
+    
+    /**
      * Builds the object
+     * @param the route for which the Op was instantiated
      * @param parameters associative array of "parameter" => "value"
      */
-    public function __construct($parameters = []) {
+    public function __construct($route, $parameters = []) {
+        $this->__route = $route;
         $this->_PARAMETERS = $parameters;
 
         // Create the functions from the static definition
@@ -153,7 +328,7 @@ class Op {
         // Do nothing
         $this->result = null;
         if (! $this->_auth()) {
-            $this->forbidden();
+            $this->_unauthorized();
             return false;
         }
         $this->_do($values);
@@ -301,11 +476,9 @@ class Op {
      * @param postval Value that is expected in order to trigger the function (if it is null, it will call the function independent from the value found in the _POST array)
      */
     protected function add_op($postvar, $function, $postval = null) {
-        // $r = new stdClass();
-        // $r->val = $postval;
         if (is_string($function))
             $function = [ $this, $function ];
-        // $r->fnc = $function;
+
         if (!isset($this->_ops[$postvar]))
             $this->_ops[$postvar] = [];
 
@@ -342,8 +515,25 @@ class Op {
      * 
      */
     protected function _do_ops($values = null) {
-        if ($values === null)
-            $values = $_POST;
+        if ($values === null) {
+            switch (static::_DEFAULT_VALUES_FOR_OPS) {
+                case "POST":
+                    $values = $_POST;
+                    break;
+                case "GET":
+                    $values = $_GET;
+                    break;
+                case "GET+POST":
+                    $values = $_GET + $_POST;
+                    break;
+                case "POST+GET":
+                    $values = $_POST + $_GET;
+                    break;
+                default:
+                    throw new \Exception("invalid value for _DEFAULT_VALUES_FOR_OPS");
+            }
+            
+        }
 
         $opsexecuted = 0;
 
@@ -370,6 +560,73 @@ class Op {
             $this->_default_op();
 
         return true;
+    }
+}
+
+/**
+ * This is a class dedicated to create REST APIs. Defines the default operation to attend to the REST methods.
+ * (*) the class keeps the ability to register other operations, as usual
+ */
+class RESTOp extends Op {
+    /**
+     * This would be a function similar to the add_op, but enabling to register handlers for operations, depending on the values of the query or the values of the form
+     */
+    protected function add_rest_op($postvar, $function, $postval = null, $methods = [ "GET", "POST" ]) {
+        throw new \Exception("not implemented");
+    }
+    function POST() {
+        self::_html_error(501, true);
+    }
+    function GET() {
+        self::_html_error(501, true);
+    }
+    function PUT() {
+        self::_html_error(501, true);
+    }
+    function HEAD() {
+        self::_html_error(501, true);
+    }
+    function DELETE() {
+        self::_html_error(501, true);
+    }
+    function CONNECT() {
+        self::_html_error(501, true);
+    }
+    function OPTION() {
+        self::_html_error(501, true);
+    }
+    function TRACE() {
+        self::_html_error(501, true);
+    }
+    function _default_op() {
+        switch ($_SERVER["REQUEST_METHOD"]) {
+            case "POST":
+                return $this->POST();
+                break;
+            case "GET":
+                return $this->GET();
+                break;
+            case "PUT":
+                return $this->PUT();
+                break;
+            case "HEAD":
+                return $this->HEAD();
+                break;
+            case "DELETE":
+                return $this->DELETE();
+                break;
+            case "CONNECT":
+                return $this->CONNECT();
+                break;
+            case "OPTION":
+                return $this->OPTION();
+                break;
+            case "TRACE":
+                return $this->TRACE();
+                break;
+            default:
+                self::_html_error(405, true);
+        }
     }
 }
 ?>
