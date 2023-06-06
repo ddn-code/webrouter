@@ -188,7 +188,7 @@ class OpUser extends ddn\api\Router\Op {
     function _update_data() {
         $_POST["name"] = $_POST["name"]??null;
         $_POST["email"] = $_POST["email"]??null;
-        echo "would set:<br>\n- user to ${_POST['name']}<br>\n- email to ${_POST['email']}<br>";
+        echo "would set:<br>\n- user to {$_POST['name']}<br>\n- email to {$_POST['email']}<br>";
         echo "executed the update data op<br>";
     }
     function _update_password() {
