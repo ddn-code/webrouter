@@ -33,8 +33,8 @@ class Renderer {
     protected static $default_renderer = null;
 
     // Backreferences to the route and the handler to be available in the renderer
-    protected $route = null;
-    protected $handler = null;
+    public $route = null;
+    public $handler = null;
 
     public static function set_default($renderer) {
         self::$default_renderer = $renderer;
