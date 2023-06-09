@@ -429,8 +429,7 @@ class Router {
         $this->_routes[] = new RouteDefinition($url, $classname, $template, $renderer);
     }
 
-    public function exec($values = null) {
-        $route = $_GET[$this->_path_varname] ?? null;
+    public function exec_route($route, $values = null) {
         foreach ($this->_routes as $function) {
             if ($function->check_url($route)) {
                 if (is_callable($this->_callbacks["precallback"])) {
@@ -461,5 +460,10 @@ class Router {
             }
         }
         return false;
+    }
+
+    public function exec($values = null) {
+        $route = $_GET[$this->_path_varname] ?? null;
+        return $this->exec_route($route, $values);
     }
 }
