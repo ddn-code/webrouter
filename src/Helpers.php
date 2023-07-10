@@ -5,6 +5,11 @@ use ddn\api\Debug;
 
 use Phug;
 
+function get_globals() {
+    $superglobals = [ "GLOBALS", "_SERVER", "_REQUEST", "_POST", "_GET", "_FILES", "_ENV", "_COOKIE", "_SESSION" ];
+    return array_diff_key($GLOBALS, array_flip($superglobals));
+}
+
 function pugrender($fname, $variables = []) {
     /*
     $pug = new Pug([
@@ -13,7 +18,7 @@ function pugrender($fname, $variables = []) {
     $pug->displayFile($fname, $variables);            
     */
     Phug::displayFile($fname,
-        $variables,
+        get_globals() + $variables,
     );
 }
 
@@ -25,7 +30,7 @@ function pugrender_s($fname, $variables = []) {
     $pug->displayFile($fname, $variables);            
     */
     return Phug::renderFile($fname,
-        $variables,
+        get_globals() + $variables,
     );
 }
 
